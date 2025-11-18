@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
 import { VoiceBotModule } from './bot/voice_bot_mezon/voice_bot.module';
 import { VoiceBotHandler } from './bot/voice_bot_mezon/voice_bot.handler';
+import { MCPModule } from './bot/mcp/mcp.module';
 
 @Module({
   imports: [
@@ -31,7 +32,8 @@ import { VoiceBotHandler } from './bot/voice_bot_mezon/voice_bot.handler';
       token: process.env.MEZON_TOKEN ?? '',
       botId: process.env.MEZON_BOT_ID ?? '',
     }),
-    VoiceBotModule
+    VoiceBotModule,
+    MCPModule
   ],
   controllers: [AppController],
   providers: [AppService, VoiceBotHandler],

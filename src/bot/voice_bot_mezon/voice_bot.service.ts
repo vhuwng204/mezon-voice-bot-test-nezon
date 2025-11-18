@@ -5,12 +5,15 @@ import { AutoContext, Nezon, SmartMessage } from "@n0xgg04/nezon";
 import { ACCESS_LEVEL } from "./bot";
 import { RegisterVoiceDto } from "./voice_bot.dto";
 import { InjectRepository } from "@nestjs/typeorm";
+import { CallTool } from "../mcp/tools/callTools";
 
 @Injectable()
 export class VoiceBotService {
     constructor(
         @InjectRepository(UserVoice)
-        private readonly userVoiceRepository: Repository<UserVoice>) {
+        private readonly userVoiceRepository: Repository<UserVoice>,
+        private readonly callTool: CallTool,
+    ) {
     }
 
     private async cloneVoice(user_id: string, voiceName: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
@@ -199,5 +202,32 @@ export class VoiceBotService {
         userVoice.isPrivate = ACCESS_LEVEL.PUBLIC;
         await this.userVoiceRepository.save(userVoice);
         return true;
+    }
+
+    async handlePlayAudio(user_id: string, text: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
+        const callResponse = await this.callTool.callTool({
+            name: 'tts_gemini_single',
+            arguments: {
+                request: {
+                    text,
+                    voice: "Zephyr",
+                },
+            },
+        });
+
+        if (callResponse.error) {
+            return message.reply(
+                SmartMessage.system(
+                    `Không thể tạo audio: ${callResponse.error instanceof Error ? callResponse.error.message : 'Unknown error'}`,
+                ),
+            );
+        }
+
+        const response = callResponse.result?.data as { audio_path?: string } | undefined;
+        if (!response?.audio_path) {
+            return message.reply(SmartMessage.system('Tool không trả về audio hợp lệ.'));
+        }
+
+        return message.reply(SmartMessage.voice(response.audio_path));
     }
 }
