@@ -54,6 +54,30 @@ export class VoiceBotService {
         });
     }
 
+    private async deleteVoice(voiceName: string, user_id: string): Promise<boolean> {
+        const record = await this.userVoiceRepository.findOne({
+            where: {
+                voiceName: voiceName,
+                mezonUserId: user_id
+            }
+        });
+
+        if (!record) return false;
+
+        if (record.createdBy === user_id) {
+            await this.userVoiceRepository.delete({ voiceName: voiceName });
+            return true;
+        }
+
+        await this.userVoiceRepository.delete({
+            voiceName: voiceName,
+            mezonUserId: user_id
+        });
+
+        return true;
+    }
+
+
     async handleRegisterVoice(user_id: string, message_content: string, voice_path: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
         let parts = message_content.trim().split(/\s+/);
         let command = parts.shift();
@@ -227,5 +251,19 @@ export class VoiceBotService {
         }
         return message.reply(SmartMessage.voice(audioPath));
 
+    }
+
+    async handleDeleteVoice(user_id: string, message_content: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
+        let parts = message_content.trim().split(/\s+/);
+        let command = parts.shift();
+        let voiceName = parts.join(' ');
+        if (!command || !voiceName) {
+            return message.reply(SmartMessage.system(`Delete voice command syntax: *delete_voice <voice_name>`));
+        }
+        const result = await this.deleteVoice(voiceName, user_id);
+        if (!result) {
+            return message.reply(SmartMessage.system(`Voice ${voiceName} not found.`));
+        }
+        return message.reply(SmartMessage.system(`Voice ${voiceName} deleted successfully.`));
     }
 }
