@@ -1,3 +1,4 @@
+import { CallToolResponse } from "../mcp/tools/callTools";
 import { ACCESS_LEVEL } from "./bot";
 
 export class RegisterVoiceDto {
@@ -9,4 +10,10 @@ export class RegisterVoiceDto {
     createdBy: string;
     createdAt: number;
     updatedAt: number;
+}
+
+
+export class MCPResponseDto {
+    result: CallToolResponse['result'] | null;
+    error: unknown | null;
 }

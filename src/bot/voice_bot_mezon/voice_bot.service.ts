@@ -1,12 +1,11 @@
 import { Repository } from "typeorm";
-import { UserVoice } from "./user_voice.entity";
 import { Injectable } from "@nestjs/common";
 import { AutoContext, Nezon, SmartMessage } from "@n0xgg04/nezon";
 import { ACCESS_LEVEL } from "./bot";
 import { RegisterVoiceDto } from "./voice_bot.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CallTool } from "../mcp/tools/callTools";
-
+import { UserVoice } from "./user_voice.entity";
 @Injectable()
 export class VoiceBotService {
     constructor(
@@ -103,7 +102,6 @@ export class VoiceBotService {
         let parts = message_content.trim().split(/\s+/);
         let command = parts.shift();
         let voiceName = parts.join(' ');
-        console.log(command, voiceName);
         if (!command || !voiceName) {
             return message.reply(SmartMessage.system(`Clone voice command syntax: *clone_voice <voice_name>`));
         }
@@ -111,7 +109,6 @@ export class VoiceBotService {
     }
 
     async setDefaultVoice(user_id: string, voiceName: string) {
-        console.log(user_id, voiceName);
         const userVoice = await this.userVoiceRepository.findOne({ where: { voiceName: voiceName, mezonUserId: user_id } });
         if (!userVoice) {
             return null;
@@ -130,7 +127,6 @@ export class VoiceBotService {
         let parts = message_content.trim().split(/\s+/);
         let command = parts.shift();
         let voiceName = parts.join(' ');
-        console.log(command, voiceName);
         if (!command || !voiceName) {
             return message.reply(SmartMessage.system(`Set default voice command syntax: *set_default <voice_name>`));
         }
@@ -204,30 +200,32 @@ export class VoiceBotService {
         return true;
     }
 
-    async handlePlayAudio(user_id: string, text: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
+    async handlePlayAudio(user_id: string, message_content: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
+        let parts = message_content.trim().split(/\s+/);
+        let command = parts.shift();
+        let text = parts.join(' ');
+        if (!command || !text) {
+            return message.reply(SmartMessage.system(`Play audio command syntax: *play_audio <text>`));
+        }
         const callResponse = await this.callTool.callTool({
             name: 'tts_gemini_single',
             arguments: {
                 request: {
                     text,
                     voice: "Zephyr",
-                },
-            },
+                }
+            }
         });
-
         if (callResponse.error) {
-            return message.reply(
-                SmartMessage.system(
-                    `Không thể tạo audio: ${callResponse.error instanceof Error ? callResponse.error.message : 'Unknown error'}`,
-                ),
-            );
+            return message.reply(SmartMessage.system(`Error playing audio`));
         }
-
-        const response = callResponse.result?.data as { audio_path?: string } | undefined;
-        if (!response?.audio_path) {
-            return message.reply(SmartMessage.system('Tool không trả về audio hợp lệ.'));
+        const textChunk = callResponse.result?.content?.find((item) => item.type === 'text');
+        const payload = textChunk ? JSON.parse(textChunk.text) : null;
+        const audioPath = payload?.audio_path;
+        if (!audioPath) {
+            return message.reply(SmartMessage.system(`Audio path not found.`));
         }
+        return message.reply(SmartMessage.voice(audioPath));
 
-        return message.reply(SmartMessage.voice(response.audio_path));
     }
 }

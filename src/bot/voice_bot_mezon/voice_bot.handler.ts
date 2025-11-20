@@ -65,8 +65,8 @@ export class VoiceBotHandler {
     @Command({ name: 'play_audio' })
     async onPlayAudio(
         @User('id') user_id: string,
-        @Arg(0) text: string,
+        @MessageContent() message_content: string,
         @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        return this.voiceBotService.handlePlayAudio(user_id, text, message);
+        return this.voiceBotService.handlePlayAudio(user_id, message_content, message);
     }
 }
