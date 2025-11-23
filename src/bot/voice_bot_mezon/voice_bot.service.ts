@@ -6,6 +6,8 @@ import { RegisterVoiceDto } from "./voice_bot.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CallTool } from "../mcp/tools/callTools";
 import { UserVoice } from "./user_voice.entity";
+import * as fs from 'fs';
+
 @Injectable()
 export class VoiceBotService {
     constructor(
@@ -14,71 +16,19 @@ export class VoiceBotService {
         private readonly callTool: CallTool,
     ) {
     }
-
-    private async cloneVoice(user_id: string, voiceName: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        const originalVoice = await this.userVoiceRepository.findOne({ where: { voiceName: voiceName } });
-        if (!originalVoice) {
-            return message.reply(SmartMessage.system(`Voice ${voiceName} not found.`));
-        }
-        let isDefault = false;
-        if (!await this.userVoiceRepository.findOne({ where: { mezonUserId: user_id, isDefault: true } })) {
-            isDefault = true;
-        }
-
-        const clonedVoiceDto: RegisterVoiceDto = {
-            mezonUserId: user_id,
-            voicePath: originalVoice.voicePath,
-            voiceName: originalVoice.voiceName,
-            isPrivate: originalVoice.isPrivate,
-            isDefault: isDefault,
-            createdBy: originalVoice.createdBy,
-            createdAt: new Date().getTime(),
-            updatedAt: new Date().getTime(),
-        };
-        await this.userVoiceRepository.insert([clonedVoiceDto]);
-        await this.userVoiceRepository.increment({ id: originalVoice.id }, 'numberUsage', 1);
-        return message.reply(SmartMessage.system(`Voice ${originalVoice.voiceName} cloned successfully.`));
-    }
-
-    private async registerVoice(registerVoiceDto: RegisterVoiceDto, @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        const userVoice = await this.userVoiceRepository.findOne({ where: { voiceName: registerVoiceDto.voiceName } });
-        if (userVoice) {
-            return message.reply(SmartMessage.system(`Voice ${registerVoiceDto.voiceName} already registered.`));
-        }
-        if (!await this.userVoiceRepository.findOne({ where: { mezonUserId: registerVoiceDto.mezonUserId, isDefault: true } })) {
-            registerVoiceDto.isDefault = true;
-        }
-        const newUserVoice = this.userVoiceRepository.create(registerVoiceDto);
-        await this.userVoiceRepository.save(newUserVoice).then(async () => {
-            return message.reply(SmartMessage.system(`Voice ${registerVoiceDto.voiceName} registered successfully.`));
-        });
-    }
+    
 
     private async deleteVoice(voiceName: string, user_id: string): Promise<boolean> {
-        const record = await this.userVoiceRepository.findOne({
-            where: {
-                voiceName: voiceName,
-                mezonUserId: user_id
-            }
-        });
-
-        if (!record) return false;
-
-        if (record.createdBy === user_id) {
-            await this.userVoiceRepository.delete({ voiceName: voiceName });
-            return true;
-        }
-
-        await this.userVoiceRepository.delete({
+        const response = await this.userVoiceRepository.delete({
             voiceName: voiceName,
             mezonUserId: user_id
         });
 
-        return true;
+        return response.affected > 0;
     }
 
 
-    async handleRegisterVoice(user_id: string, message_content: string, voice_path: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
+    async handleRegisterVoice(user_id: string, user_name: string, message_content: string, voice_path: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
         let parts = message_content.trim().split(/\s+/);
         let command = parts.shift();
         let type = parts.shift();
@@ -95,18 +45,24 @@ export class VoiceBotService {
         }
         const registerVoiceDto: RegisterVoiceDto = {
             mezonUserId: user_id,
+            mezonUserName: user_name,
             voicePath: voice_path,
             voiceName: voiceName,
             isPrivate: type === ACCESS_LEVEL.PRIVATE ? ACCESS_LEVEL.PRIVATE : ACCESS_LEVEL.PUBLIC,
-            createdBy: user_id,
             createdAt: new Date().getTime(),
             updatedAt: new Date().getTime(),
         };
-        return this.registerVoice(registerVoiceDto, message);
+        const response = await this.userVoiceRepository.save(registerVoiceDto);
+        if (response) {
+            response.voiceName = `${voiceName}_${response.id}`;
+            await this.userVoiceRepository.save(response);
+            return message.reply(SmartMessage.system(`Voice ${response.voiceName} registered successfully.`));
+        }
+        return message.reply(SmartMessage.system(`Failed to register voice ${registerVoiceDto.voiceName}.`));
     }
 
-    async handleListVoices(@AutoContext('message') message: Nezon.AutoContextType.Message) {
-        const voices = await this.userVoiceRepository.find({ order: { numberUsage: 'DESC' } });
+    async handleListVoices(user_id: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
+        const voices = await this.userVoiceRepository.find({ where: { mezonUserId: user_id }, order: { numberUsage: 'DESC' } });
         if (voices.length === 0) {
             return message.reply(SmartMessage.system(`You have no voices`));
         }
@@ -120,16 +76,6 @@ export class VoiceBotService {
         const lines = sorted.map((v) => `[${v.isPrivate}] ${v.id} - ${v.voiceName}`);
         const header = `List of voices:`;
         return message.reply(SmartMessage.system(`${header}\n${lines.join('\n')}`));
-    }
-
-    async handleCloneVoice(user_id: string, message_content: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        let parts = message_content.trim().split(/\s+/);
-        let command = parts.shift();
-        let voiceName = parts.join(' ');
-        if (!command || !voiceName) {
-            return message.reply(SmartMessage.system(`Clone voice command syntax: *clone_voice <voice_name>`));
-        }
-        return this.cloneVoice(user_id, voiceName, message);
     }
 
     async setDefaultVoice(user_id: string, voiceName: string) {
@@ -159,22 +105,6 @@ export class VoiceBotService {
             return message.reply(SmartMessage.system(`Voice ${voiceName} not found.`));
         }
         return message.reply(SmartMessage.system(`Voice ${voiceName} set default successfully.`));
-    }
-
-    async handleGetUserVoiceList(user_id: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        const userVoiceList = await this.userVoiceRepository.find({ where: { mezonUserId: user_id } });
-        if (userVoiceList.length === 0) {
-            return message.reply(SmartMessage.system(`You have no voices.`));
-        }
-        const priority = (voice: UserVoice) => voice.isDefault ? 0 : voice.isPrivate === ACCESS_LEVEL.PUBLIC ? 1 : 2;
-        const typeLabel = (voice: UserVoice) => voice.isPrivate === ACCESS_LEVEL.PUBLIC ? `[PUBLIC]` : `[PRIVATE]`;
-        const orderedVoices = [...userVoiceList].sort((a, b) => priority(a) - priority(b));
-        const lines = orderedVoices.map((voice, index) => {
-            const defaultLabel = voice.isDefault ? `[DEFAULT]` : ``;
-            const labels = `${defaultLabel}${typeLabel(voice)}`;
-            return `${index + 1}. ${labels} ${voice.voiceName}`;
-        });
-        return message.reply(SmartMessage.system(`Your voices:\n${lines.join('\n')}`));
     }
 
     async setVoicePrivate(user_id: string, voiceName: string) {
@@ -231,12 +161,26 @@ export class VoiceBotService {
         if (!command || !text) {
             return message.reply(SmartMessage.system(`Play audio command syntax: *play_audio <text>`));
         }
+        let voiceName = "";
+        const userDefaultVoice = await this.userVoiceRepository.findOne({ where: { mezonUserId: user_id, isDefault: true } });
+        if (!userDefaultVoice) {
+            let publicVoices = await this.userVoiceRepository.find({ where: { mezonUserId: user_id, isPrivate: ACCESS_LEVEL.PUBLIC } });
+            if (publicVoices.length > 0) {
+                const randomIndex = Math.floor(Math.random() * publicVoices.length);
+                voiceName = publicVoices[randomIndex].voiceName;
+            } else {
+                voiceName = "";
+            }
+        } else {
+            voiceName = userDefaultVoice.voiceName;
+        }
         const callResponse = await this.callTool.callTool({
             name: 'tts_gemini_single',
             arguments: {
                 request: {
                     text,
-                    voice: "Zephyr",
+                    voice: voiceName,
+                    file_path: userDefaultVoice?.voicePath ? userDefaultVoice.voicePath : "",
                 }
             }
         });
@@ -252,6 +196,25 @@ export class VoiceBotService {
         return message.reply(SmartMessage.voice(audioPath));
 
     }
+    
+    async handleGetAudioList() {
+        const callResponse = await this.callTool.callTool({
+            name: 'get_audio_list',
+            arguments: {
+                request: {
+                    page: 1,
+                    limit: 100,
+                    search: "",
+                    sort_by: "name",
+                    sort_order: "asc",
+                    filter_by_type: "",
+                    filter_by_voice: ""
+                }
+            }
+        });
+        console.log(callResponse.result?.content);
+        return callResponse.result?.content;
+    }
 
     async handleDeleteVoice(user_id: string, message_content: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
         let parts = message_content.trim().split(/\s+/);
@@ -265,5 +228,10 @@ export class VoiceBotService {
             return message.reply(SmartMessage.system(`Voice ${voiceName} not found.`));
         }
         return message.reply(SmartMessage.system(`Voice ${voiceName} deleted successfully.`));
+    }
+
+    async handleSendHelpMessage(@AutoContext('message') message: Nezon.AutoContextType.Message) {
+        const helpMessage = fs.readFileSync(process.cwd() + '/src/bot/bot_help_message.txt', 'utf8');
+        return message.reply(SmartMessage.system(helpMessage.toString()));
     }
 }

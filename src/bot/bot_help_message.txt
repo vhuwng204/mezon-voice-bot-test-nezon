@@ -1,0 +1,21 @@
+HƯỚNG DẪN SỬ DỤNG MEZON VOICE BOT 
+
+*Đăng ký giọng – register_voice: *register_voice <private|public> <tên> + kèm file audio → Tạo giọng mới.
+
+*Xem tất cả giọng – list_voices: Hiển thị toàn bộ giọng trong hệ thống (ưu tiên public).
+
+Clone giọng – *clone_voice <tên>: Sao chép một giọng có sẵn để dùng cho tài khoản.
+
+Đặt giọng mặc định – *set_default <tên>: Chọn giọng dùng cho lệnh phát âm thanh.
+
+*Xem giọng của bạn – my_voices: Liệt kê giọng bạn sở hữu (default hiển thị trước).
+
+Chuyển giọng sang private – *set_private <tên>: Giọng chỉ mình bạn dùng.
+
+Chuyển giọng sang public – *set_public <tên>: Cho phép người khác clone và sử dụng.
+
+Phát âm thanh – *play_audio <text>: Chuyển văn bản thành audio bằng giọng mặc định.
+
+Xóa giọng – *delete_voice <tên>: Xóa giọng khỏi tài khoản.
+
+*Xem hướng dẫn – help: Hiển thị tất cả tính năng bot.

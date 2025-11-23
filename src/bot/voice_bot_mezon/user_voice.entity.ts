@@ -15,13 +15,16 @@ export class UserVoice {
     @PrimaryGeneratedColumn()
     id: number
 
-    @Column({ type: "text", name: "mezon_user_id" })
+    @Column({ type: "text", name: "mezon_user_id", nullable: true })
     mezonUserId: string
 
-    @Column({ type: "text", name: "voice_path" })
+    @Column({ type: "text", name: "mezon_user_name", nullable: true })
+    mezonUserName: string
+
+    @Column({ type: "text", name: "voice_path", nullable: true })
     voicePath: string
 
-    @Column({ type: "text", name: "voice_name" })
+    @Column({ type: "text", name: "voice_name", nullable: true })
     voiceName: string
 
     @Column({ type: "boolean", default: false, name: "is_default" })
@@ -30,13 +33,10 @@ export class UserVoice {
     @Column({ type: "enum", enum: ACCESS_LEVEL, default: ACCESS_LEVEL.PRIVATE, name: "is_private" })
     isPrivate: ACCESS_LEVEL
 
-    @Column({ type: "bigint", name: "number_usage", default: 1 })
+    @Column({ type: "bigint", name: "number_usage", default: 1, nullable: true })
     numberUsage: number
 
-    @Column({ type: "text", name: "created_by" })
-    createdBy: string
-
-    @Column({ type: "bigint", name: "created_at" })
+    @Column({ type: "bigint", name: "created_at", nullable: true })
     createdAt: number
 
     @Column({ type: "bigint", nullable: true, name: "updated_at" })
