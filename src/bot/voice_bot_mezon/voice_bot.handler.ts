@@ -1,4 +1,4 @@
-import { Arg, Attachments, AutoContext, Command, MessageContent, Nezon, SmartMessage, User } from "@n0xgg04/nezon";
+import { Arg, Attachments, AutoContext, Command, Message, MessageContent, Nezon, SmartMessage, User } from "@n0xgg04/nezon";
 import { Injectable } from "@nestjs/common";
 import { VoiceBotService } from "./voice_bot.service";
 
@@ -9,7 +9,7 @@ export class VoiceBotHandler {
     @Command({ name: 'register_voice' })
     async onRegisterVoice(
         @User('id') user_id: string,
-        @User('username') user_name: string,
+        @User('display_name') display_name: string,
         @MessageContent() message_content: string,
         @Attachments(0) attachment: Nezon.Attachment,
         @AutoContext('message') message: Nezon.AutoContextType.Message) {
@@ -17,7 +17,7 @@ export class VoiceBotHandler {
             if (!attachment) {
                 return message.reply(SmartMessage.system(`Please attach a voice file.`));
             }
-            return this.voiceBotService.handleRegisterVoice(user_id, user_name, message_content, attachment.url, message);
+            return this.voiceBotService.handleRegisterVoice(user_id, display_name, message_content, attachment.url, message);
         }
     }
 
@@ -70,13 +70,13 @@ export class VoiceBotHandler {
 
     @Command({ name: 'Mezon_Voice_Bot', prefix:"@" })
     async onSendHelpMessageInit(
-        @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        return this.voiceBotService.handleSendHelpMessage(message);
+        @Message() m: Nezon.Message) {
+        return this.voiceBotService.handleSendHelpMessage(m);
     }
 
     @Command({name: 'help'})
     async onSendHelpMessage(
-        @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        return this.voiceBotService.handleSendHelpMessage(message);
+        @Message() m: Nezon.Message) {
+        return this.voiceBotService.handleSendHelpMessage(m);
     }
 }

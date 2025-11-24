@@ -1,13 +1,14 @@
 import { Repository } from "typeorm";
 import { Injectable } from "@nestjs/common";
-import { AutoContext, Nezon, SmartMessage } from "@n0xgg04/nezon";
+import { AutoContext, Message, Nezon, SmartMessage } from "@n0xgg04/nezon";
 import { ACCESS_LEVEL } from "./bot";
 import { RegisterVoiceDto } from "./voice_bot.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CallTool } from "../mcp/tools/callTools";
 import { UserVoice } from "./user_voice.entity";
-import * as fs from 'fs';
-
+import { EMarkdownType } from "mezon-sdk";
+import * as fs from "fs";
+import * as path from "path";
 @Injectable()
 export class VoiceBotService {
     constructor(
@@ -15,8 +16,7 @@ export class VoiceBotService {
         private readonly userVoiceRepository: Repository<UserVoice>,
         private readonly callTool: CallTool,
     ) {
-    }
-    
+    } 
 
     private async deleteVoice(voiceName: string, user_id: string): Promise<boolean> {
         const response = await this.userVoiceRepository.delete({
@@ -27,56 +27,108 @@ export class VoiceBotService {
         return response.affected > 0;
     }
 
-
-    async handleRegisterVoice(user_id: string, user_name: string, message_content: string, voice_path: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        let parts = message_content.trim().split(/\s+/);
-        let command = parts.shift();
-        let type = parts.shift();
-        let voiceName = parts.join(' ');
-        console.log(command, type, voiceName);
-        if (!command || !type || !voiceName) {
-            return message.reply(SmartMessage.system(`Register voice command syntax: *register_voice <private|public> <voice_name>`));
+    async handleRegisterVoice(
+        user_id: string,
+        display_name: string,
+        message_content: string,
+        voice_path: string,
+        @AutoContext('message') message: Nezon.AutoContextType.Message
+    ) {
+        const parts = message_content.trim().split(/\s+/);
+    
+        if (parts.length !== 3) {
+            return message.reply(
+                SmartMessage.system(`Sai cú pháp. Đúng là: *register_voice <private|public> <voice_name>`)
+            );
         }
+    
+        const type = parts[1];
+        const voiceName = parts[2];
+    
         if (type !== ACCESS_LEVEL.PRIVATE && type !== ACCESS_LEVEL.PUBLIC) {
-            return message.reply(SmartMessage.system(`Invalid voice type: ${type}. Valid types are ${ACCESS_LEVEL.PRIVATE} and ${ACCESS_LEVEL.PUBLIC}`));
+            return message.reply(
+                SmartMessage.system(
+                    `Invalid voice type: ${type}. Valid types: ${ACCESS_LEVEL.PRIVATE}, ${ACCESS_LEVEL.PUBLIC}`
+                )
+            );
         }
-        if (!voiceName) {
-            return message.reply(SmartMessage.system(`Voice name is required. Please provide a voice name.`));
+    
+        const validVoiceNameRegex = /^[a-zA-Z0-9_]+$/;
+    
+        if (!validVoiceNameRegex.test(voiceName)) {
+            return message.reply(
+                SmartMessage.system(
+                    `Voice name không hợp lệ. Chỉ được chứa ký tự không dấu + không khoảng cách.`
+                )
+            );
         }
+        
+       
         const registerVoiceDto: RegisterVoiceDto = {
             mezonUserId: user_id,
-            mezonUserName: user_name,
+            mezonUserName: display_name,
             voicePath: voice_path,
             voiceName: voiceName,
             isPrivate: type === ACCESS_LEVEL.PRIVATE ? ACCESS_LEVEL.PRIVATE : ACCESS_LEVEL.PUBLIC,
-            createdAt: new Date().getTime(),
-            updatedAt: new Date().getTime(),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
         };
+        if (!await this.userVoiceRepository.findOne({ where: { mezonUserId: user_id, isDefault: true } })) {
+            registerVoiceDto.isDefault = true;
+        }
         const response = await this.userVoiceRepository.save(registerVoiceDto);
+    
         if (response) {
             response.voiceName = `${voiceName}_${response.id}`;
             await this.userVoiceRepository.save(response);
-            return message.reply(SmartMessage.system(`Voice ${response.voiceName} registered successfully.`));
+            return message.reply(
+                SmartMessage.system(`Voice ${response.voiceName} registered successfully.`)
+            );
         }
-        return message.reply(SmartMessage.system(`Failed to register voice ${registerVoiceDto.voiceName}.`));
+    
+        return message.reply(
+            SmartMessage.system(`Failed to register voice ${registerVoiceDto.voiceName}.`)
+        );
     }
+    
 
     async handleListVoices(user_id: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        const voices = await this.userVoiceRepository.find({ where: { mezonUserId: user_id }, order: { numberUsage: 'DESC' } });
-        if (voices.length === 0) {
-            return message.reply(SmartMessage.system(`You have no voices`));
-        }
-
-        const sorted = voices.sort((a, b) => {
-            const aPublic = a.isPrivate === ACCESS_LEVEL.PUBLIC ? 0 : 1;
-            const bPublic = b.isPrivate === ACCESS_LEVEL.PUBLIC ? 0 : 1;
-            return aPublic - bPublic;
+        let replyText = "";
+    
+        const voices = await this.userVoiceRepository.find({
+            where: { mezonUserId: user_id },
+            order: { numberUsage: 'DESC' }
         });
-
-        const lines = sorted.map((v) => `[${v.isPrivate}] ${v.id} - ${v.voiceName}`);
-        const header = `List of voices:`;
-        return message.reply(SmartMessage.system(`${header}\n${lines.join('\n')}`));
+    
+        if (voices.length > 0) {
+            replyText += "Các giọng của bạn:\n";
+            replyText += voices
+                .map((v) => {
+                    const defaultTag = v.isDefault ? "[default]" : "";
+                    const userNameTag = v.mezonUserName ? `[${v.mezonUserName}]` : "";
+                    return `[${v.isPrivate}] ${v.id} ${v.voiceName} ${defaultTag} ${userNameTag}`.trim();
+                })
+                .join("\n");
+            replyText += "\n\n";
+        }
+    
+        const topVoices = await this.userVoiceRepository.find({
+            where: { isPrivate: ACCESS_LEVEL.PUBLIC },
+            order: { numberUsage: 'DESC' },
+            take: 5,
+        });
+    
+        replyText += "Các giọng đang hot hiện nay:\n";
+        replyText += topVoices
+            .map((v) => {
+                const byWho = v.mezonUserId === user_id ? "[by me]" : `[by ${v.mezonUserName}]`;
+                return `[${v.isPrivate}] ${v.id} ${v.voiceName} ${byWho} (${v.numberUsage} usages)`;
+            })
+            .join("\n");
+    
+        return message.reply(SmartMessage.system(replyText));
     }
+    
 
     async setDefaultVoice(user_id: string, voiceName: string) {
         const userVoice = await this.userVoiceRepository.findOne({ where: { voiceName: voiceName, mezonUserId: user_id } });
@@ -230,8 +282,68 @@ export class VoiceBotService {
         return message.reply(SmartMessage.system(`Voice ${voiceName} deleted successfully.`));
     }
 
-    async handleSendHelpMessage(@AutoContext('message') message: Nezon.AutoContextType.Message) {
-        const helpMessage = fs.readFileSync(process.cwd() + '/src/bot/bot_help_message.txt', 'utf8');
-        return message.reply(SmartMessage.system(helpMessage.toString()));
+    async handleSendHelpMessage(@Message() m: Nezon.Message) {
+        const helpMessagePath = path.join(process.cwd(), 'src', 'bot', 'bot_help_message.txt');
+        const helpText = fs.readFileSync(helpMessagePath, 'utf-8');
+
+        const exampleMarkers: { s: number; e: number; type: EMarkdownType }[] = [];
+
+        const lineRegex = /(.*?)(\r?\n|$)/g;
+        const lines: { text: string; start: number; end: number }[] = [];
+        let match: RegExpExecArray | null;
+
+        while ((match = lineRegex.exec(helpText)) !== null) {
+            const lineText = match[1];
+            const lineStart = match.index;
+            const lineEnd = lineStart + match[0].length;
+            lines.push({ text: lineText, start: lineStart, end: lineEnd });
+
+            if (!match[2]) {
+                break;
+            }
+        }
+
+        const isExampleLine = (text: string) =>
+            text.trimStart().toLowerCase().startsWith('- ví dụ:');
+
+        const shouldStopBlock = (text: string) => {
+            const trimmed = text.trim();
+            if (trimmed === '') {
+                return true;
+            }
+            if (/^\d+\./.test(trimmed)) {
+                return true;
+            }
+            if (trimmed.startsWith('- ') && !trimmed.toLowerCase().startsWith('- ví dụ:')) {
+                return true;
+            }
+            return false;
+        };
+
+        for (let i = 0; i < lines.length; i++) {
+            if (!isExampleLine(lines[i].text)) {
+                continue;
+            }
+
+            const blockStart = lines[i].start;
+            let blockEnd = lines[i].end;
+            let j = i + 1;
+
+            while (j < lines.length && !shouldStopBlock(lines[j].text)) {
+                blockEnd = lines[j].end;
+                j++;
+            }
+
+            exampleMarkers.push({
+                s: blockStart,
+                e: blockEnd,
+                type: EMarkdownType.PRE,
+            });
+        }
+
+        return await m.reply({
+            t: helpText,
+            mk: exampleMarkers,
+        })
     }
 }

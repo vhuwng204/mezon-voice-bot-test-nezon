@@ -1,21 +1,43 @@
-HƯỚNG DẪN SỬ DỤNG MEZON VOICE BOT 
-
-*Đăng ký giọng – register_voice: *register_voice <private|public> <tên> + kèm file audio → Tạo giọng mới.
-
-*Xem tất cả giọng – list_voices: Hiển thị toàn bộ giọng trong hệ thống (ưu tiên public).
-
-Clone giọng – *clone_voice <tên>: Sao chép một giọng có sẵn để dùng cho tài khoản.
-
-Đặt giọng mặc định – *set_default <tên>: Chọn giọng dùng cho lệnh phát âm thanh.
-
-*Xem giọng của bạn – my_voices: Liệt kê giọng bạn sở hữu (default hiển thị trước).
-
-Chuyển giọng sang private – *set_private <tên>: Giọng chỉ mình bạn dùng.
-
-Chuyển giọng sang public – *set_public <tên>: Cho phép người khác clone và sử dụng.
-
-Phát âm thanh – *play_audio <text>: Chuyển văn bản thành audio bằng giọng mặc định.
-
-Xóa giọng – *delete_voice <tên>: Xóa giọng khỏi tài khoản.
-
-*Xem hướng dẫn – help: Hiển thị tất cả tính năng bot.
+Mezon_Voice_Bot có các lệnh sau:
+1. Đăng ký giọng
+- cách thực hiện: upload file âm thanh mp4, gõ lệnh như sau: *register_voice <private|public> <tên>
+- Yêu câu: tên giọng đăng ký viết liền(hoặc ngăn cách bởi dấu '_'), không dấu
+- private: chỉ mình sử dụng thôi, người khác ko dùng được
+- public: người khác có thể sử dụng được voice này
+- ví dụ: đăng ký giọng private, tên là giọng của tôi
+*register_voice private giọng của tôi
+2. Xem các giọng đã được đăng ký
+- Cách thực hiện: gõ lệnh như sau: *list_voice
+- Danh sách sẽ hiện ra dưới dạng sau:
+    - Các giọng của bạn:
+        - Giọng default của bạn: [public|private] <id> <tên giọng bạn đã đăng ký> [default] (number usages nếu như giọng là public)
+        - Danh sách giọng private của bạn [private] <id> <tên giọng bạn đã đăng ký> 
+        - Danh sách giọng public của bạn [public] <id> <tên giọng bạn đã đăng ký> (number usages)
+    - Top 5 giọng thịnh hành hiện nay:
+        - Danh sách giọng public có lượt sử dụng cao nhất [public] <id> <tên giọng đã được đăng ký> <tên chủ sở hữu> (number usages)
+- ví dụ: *list_voice
+Các giọng của bạn:
+[private] 15 KienThucQuanSu [default] 
+[public] 16 kenhCoVan 
+[public] 17 Hehehe 
+Các giọng đang hot hiện nay:
+[public] 16 kenhCoVan [by me] (1 usages)
+[public] 17 HocEnglishOnline [by hung.nguyenduc] (1 usages)
+3. Sử dụng giọng của người dùng khác
+- Cách thực hiện: gõ lệnh như sau: *use <tên giọng>
+- yêu cầu: chỉ sử dụng được những giọng có kiểu là public
+- ví dụ: muốn sử dụng giọng là Hehehe
+*use Hehehe
+4. Chỉnh giọng của mình thành trạng thái default
+- Cách thực hiện: *set_default <tên giọng của bạn mà bạn muốn đổi sang default>
+- ví dụ: Giọng KienThucQuanSu đang là default và bạn muốn đổi sang giọng kenhCoVan là default
+*set_default kenhCoVan
+5. Đổi kiểu của giọng sang public|private
+- Cách thực hiện: gõ lệnh như sau: *set_public|set_private <tên giọng>
+- ví dụ: giọng KienThucQuanSu đang có kiểu là private và muốn chuyển sang dạng public và ngược lại
+*set_public KienThucQuanSu
+*set_private Hehehe
+6. Xoá giọng
+- Cách thực hiện: gõ lệnh như sau: *delete <tên giọng>
+- ví dụ: bạn muốn xoá giọng KienThucQuanSu
+*delete KienThucQuanSu
