@@ -8,8 +8,7 @@ export class VoiceBotHandler {
 
     @Command({ name: 'register_voice' })
     async onRegisterVoice(
-        @User('id') user_id: string,
-        @User('display_name') display_name: string,
+        @User() user: Nezon.User,
         @MessageContent() message_content: string,
         @Attachments(0) attachment: Nezon.Attachment,
         @AutoContext('message') message: Nezon.AutoContextType.Message) {
@@ -17,7 +16,7 @@ export class VoiceBotHandler {
             if (!attachment) {
                 return message.reply(SmartMessage.system(`Please attach a voice file.`));
             }
-            return this.voiceBotService.handleRegisterVoice(user_id, display_name, message_content, attachment.url, message);
+            return this.voiceBotService.handleRegisterVoice(user, message_content, attachment.url, message);
         }
     }
 
@@ -31,25 +30,25 @@ export class VoiceBotHandler {
     @Command({ name: 'set_default' })
     async onSetDefaultVoice(
         @User('id') user_id: string,
-        @MessageContent() message_content: string,
+        @Arg(0) voice_name: string,
         @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        return this.voiceBotService.handleSetDefaultVoice(user_id, message_content, message);
+        return this.voiceBotService.handleSetDefaultVoice(user_id, voice_name, message);
     }
 
     @Command({ name: 'set_private' })
     async onSetPrivateVoice(
         @User('id') user_id: string,
-        @MessageContent() message_content: string,
+        @Arg(0) voice_name: string,
         @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        return this.voiceBotService.handleSetVoicePrivate(user_id, message_content, message);
+        return this.voiceBotService.handleSetVoicePrivate(user_id, voice_name, message);
     }
 
     @Command({ name: 'set_public' })
     async onSetPublicVoice(
         @User('id') user_id: string,
-        @MessageContent() message_content: string,
+        @Arg(0) voice_name: string,
         @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        return this.voiceBotService.handleSetVoicePublic(user_id, message_content, message);
+        return this.voiceBotService.handleSetVoicePublic(user_id, voice_name, message);
     }
 
     @Command({ name: 'play_audio' })
@@ -63,9 +62,9 @@ export class VoiceBotHandler {
     @Command({ name: 'delete_voice' })
     async onDeleteVoice(
         @User('id') user_id: string,
-        @MessageContent() message_content: string,
+        @Arg(0) voice_name: string,
         @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        return this.voiceBotService.handleDeleteVoice(user_id, message_content, message);
+        return this.voiceBotService.handleDeleteVoice(user_id, voice_name, message);
     }
 
     @Command({ name: 'Mezon_Voice_Bot', prefix:"@" })
@@ -78,5 +77,13 @@ export class VoiceBotHandler {
     async onSendHelpMessage(
         @Message() m: Nezon.Message) {
         return this.voiceBotService.handleSendHelpMessage(m);
+    }
+
+    @Command({name: 'use'})
+    async onUseVoice(
+        @User() user: Nezon.User,
+        @Arg(0) voice_name: string,
+        @AutoContext('message') message: Nezon.AutoContextType.Message) {
+        return this.voiceBotService.handleUseVoice(user, voice_name, message);
     }
 }

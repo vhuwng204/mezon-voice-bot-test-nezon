@@ -24,6 +24,9 @@ export class UserVoice {
     @Column({ type: "text", name: "voice_path", nullable: true })
     voicePath: string
 
+    @Column({ type: "text", name: "text_ref", nullable: true })
+    textRef: string
+
     @Column({ type: "text", name: "voice_name", nullable: true })
     voiceName: string
 

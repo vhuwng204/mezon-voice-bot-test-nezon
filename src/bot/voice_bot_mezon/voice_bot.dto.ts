@@ -7,6 +7,7 @@ export class RegisterVoiceDto {
     voicePath: string;
     voiceName: string;
     isPrivate: ACCESS_LEVEL;
+    textRef?: string;    
     isDefault?: boolean;
     createdAt: number;
     updatedAt: number;

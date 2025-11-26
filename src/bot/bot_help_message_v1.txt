@@ -1,12 +1,5 @@
 Mezon_Voice_Bot có các lệnh sau:
-1. Đăng ký giọng
-- cách thực hiện: upload file âm thanh mp4 và gõ lệnh như sau: *register_voice <private|public> <tên>
-- Yêu câu: tên giọng đăng ký viết liền(hoặc ngăn cách bởi dấu '_'), không dấu
-- private: chỉ mình sử dụng thôi, người khác ko dùng được
-- public: người khác có thể sử dụng được voice này
-- ví dụ: đăng ký giọng private, tên là giọng của tôi
-*register_voice private giọng của tôi
-2. Xem các giọng đã được đăng ký
+1. Xem các giọng đã được đăng ký
 - Cách thực hiện: gõ lệnh như sau: *list_voice
 - Danh sách sẽ hiện ra dưới dạng sau:
     - Các giọng của bạn:
@@ -23,25 +16,12 @@ Các giọng của bạn:
 Các giọng đang hot hiện nay:
 [public] 16 kenhCoVan [by me] (1 usages)
 [public] 17 HocEnglishOnline [by hung.nguyenduc] (1 usages)
-3. Sử dụng giọng của người dùng khác
+2. Sử dụng giọng của người dùng khác
 - Cách thực hiện: gõ lệnh như sau: *use <tên giọng>
 - yêu cầu: chỉ sử dụng được những giọng có kiểu là public
 - ví dụ: muốn sử dụng giọng là Hehehe
 *use Hehehe
-4. Chỉnh giọng của mình thành trạng thái default
-- Cách thực hiện: *set_default <tên giọng của bạn mà bạn muốn đổi sang default>
-- ví dụ: Giọng KienThucQuanSu đang là default và bạn muốn đổi sang giọng kenhCoVan là default
-*set_default kenhCoVan
-5. Đổi kiểu của giọng sang public|private
-- Cách thực hiện: gõ lệnh như sau: *set_public|set_private <tên giọng>
-- ví dụ: giọng KienThucQuanSu đang có kiểu là private và muốn chuyển sang dạng public và ngược lại
-*set_public KienThucQuanSu
-*set_private Hehehe
-6. Xoá giọng
-- Cách thực hiện: gõ lệnh như sau: *delete <tên giọng>
-- ví dụ: bạn muốn xoá giọng KienThucQuanSu
-*delete KienThucQuanSu
-7. Sử dụng chuyển văn bản thành âm thanh
+3. Sử dụng chuyển văn bản thành âm thanh
 - Cách thực hiện: *play_audio <đoạn văn bản>
 - Note: Nếu như bạn chưa đăng ký bản ghi giọng nào thì hệ thống sẽ lấy random 1 giọng để phát
 - ví dụ: muốn chuyển "Tôi rất đẹp trai" sang bản audio 

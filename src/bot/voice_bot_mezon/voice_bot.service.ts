@@ -1,4 +1,4 @@
-import { Repository } from "typeorm";
+import { Repository, Like } from "typeorm";
 import { Injectable } from "@nestjs/common";
 import { AutoContext, Message, Nezon, SmartMessage } from "@n0xgg04/nezon";
 import { ACCESS_LEVEL } from "./bot";
@@ -16,7 +16,7 @@ export class VoiceBotService {
         private readonly userVoiceRepository: Repository<UserVoice>,
         private readonly callTool: CallTool,
     ) {
-    } 
+    }
 
     private async deleteVoice(voiceName: string, user_id: string): Promise<boolean> {
         const response = await this.userVoiceRepository.delete({
@@ -28,23 +28,22 @@ export class VoiceBotService {
     }
 
     async handleRegisterVoice(
-        user_id: string,
-        display_name: string,
+        user: Nezon.User,
         message_content: string,
         voice_path: string,
         @AutoContext('message') message: Nezon.AutoContextType.Message
     ) {
         const parts = message_content.trim().split(/\s+/);
-    
+
         if (parts.length !== 3) {
             return message.reply(
-                SmartMessage.system(`Sai cú pháp. Đúng là: *register_voice <private|public> <voice_name>`)
+                SmartMessage.system(`Sai cú pháp. Cú pháp đúng là: *register_voice <private|public> <voice_name>`)
             );
         }
-    
+
         const type = parts[1];
         const voiceName = parts[2];
-    
+
         if (type !== ACCESS_LEVEL.PRIVATE && type !== ACCESS_LEVEL.PUBLIC) {
             return message.reply(
                 SmartMessage.system(
@@ -52,9 +51,9 @@ export class VoiceBotService {
                 )
             );
         }
-    
+
         const validVoiceNameRegex = /^[a-zA-Z0-9_]+$/;
-    
+
         if (!validVoiceNameRegex.test(voiceName)) {
             return message.reply(
                 SmartMessage.system(
@@ -62,22 +61,21 @@ export class VoiceBotService {
                 )
             );
         }
-        
-       
+
         const registerVoiceDto: RegisterVoiceDto = {
-            mezonUserId: user_id,
-            mezonUserName: display_name,
+            mezonUserId: user.id,
+            mezonUserName: user.username,
             voicePath: voice_path,
             voiceName: voiceName,
             isPrivate: type === ACCESS_LEVEL.PRIVATE ? ACCESS_LEVEL.PRIVATE : ACCESS_LEVEL.PUBLIC,
             createdAt: Date.now(),
             updatedAt: Date.now(),
         };
-        if (!await this.userVoiceRepository.findOne({ where: { mezonUserId: user_id, isDefault: true } })) {
+        if (!await this.userVoiceRepository.findOne({ where: { mezonUserId: user.id, isDefault: true } })) {
             registerVoiceDto.isDefault = true;
         }
         const response = await this.userVoiceRepository.save(registerVoiceDto);
-    
+
         if (response) {
             response.voiceName = `${voiceName}_${response.id}`;
             await this.userVoiceRepository.save(response);
@@ -85,39 +83,47 @@ export class VoiceBotService {
                 SmartMessage.system(`Voice ${response.voiceName} registered successfully.`)
             );
         }
-    
+
         return message.reply(
             SmartMessage.system(`Failed to register voice ${registerVoiceDto.voiceName}.`)
         );
     }
-    
+
 
     async handleListVoices(user_id: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
         let replyText = "";
-    
+
         const voices = await this.userVoiceRepository.find({
             where: { mezonUserId: user_id },
             order: { numberUsage: 'DESC' }
         });
-    
+
         if (voices.length > 0) {
             replyText += "Các giọng của bạn:\n";
-            replyText += voices
+            const sortedVoices = voices.slice().sort((a, b) => {
+                if (a.isDefault !== b.isDefault) {
+                    return a.isDefault ? -1 : 1;
+                }
+                if (a.isPrivate !== b.isPrivate) {
+                    return a.isPrivate === ACCESS_LEVEL.PRIVATE ? -1 : 1;
+                }
+                return 0;
+            });
+            replyText += sortedVoices
                 .map((v) => {
                     const defaultTag = v.isDefault ? "[default]" : "";
-                    const userNameTag = v.mezonUserName ? `[${v.mezonUserName}]` : "";
-                    return `[${v.isPrivate}] ${v.id} ${v.voiceName} ${defaultTag} ${userNameTag}`.trim();
+                    return `[${v.isPrivate}] ${v.id} ${v.voiceName} ${defaultTag}`.trim();
                 })
                 .join("\n");
-            replyText += "\n\n";
+            replyText += "\n";
         }
-    
+
         const topVoices = await this.userVoiceRepository.find({
             where: { isPrivate: ACCESS_LEVEL.PUBLIC },
             order: { numberUsage: 'DESC' },
-            take: 5,
+            take: 10,
         });
-    
+
         replyText += "Các giọng đang hot hiện nay:\n";
         replyText += topVoices
             .map((v) => {
@@ -125,13 +131,13 @@ export class VoiceBotService {
                 return `[${v.isPrivate}] ${v.id} ${v.voiceName} ${byWho} (${v.numberUsage} usages)`;
             })
             .join("\n");
-    
+
         return message.reply(SmartMessage.system(replyText));
     }
-    
 
-    async setDefaultVoice(user_id: string, voiceName: string) {
-        const userVoice = await this.userVoiceRepository.findOne({ where: { voiceName: voiceName, mezonUserId: user_id } });
+
+    async setDefaultVoice(user_id: string, voice_name: string) {
+        const userVoice = await this.userVoiceRepository.findOne({ where: { voiceName: voice_name, mezonUserId: user_id } });
         if (!userVoice) {
             return null;
         }
@@ -145,18 +151,12 @@ export class VoiceBotService {
         return true;
     }
 
-    async handleSetDefaultVoice(user_id: string, message_content: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        let parts = message_content.trim().split(/\s+/);
-        let command = parts.shift();
-        let voiceName = parts.join(' ');
-        if (!command || !voiceName) {
-            return message.reply(SmartMessage.system(`Set default voice command syntax: *set_default <voice_name>`));
-        }
-        const result = await this.setDefaultVoice(user_id, voiceName);
+    async handleSetDefaultVoice(user_id: string, voice_name: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
+        const result = await this.setDefaultVoice(user_id, voice_name);
         if (!result) {
-            return message.reply(SmartMessage.system(`Voice ${voiceName} not found.`));
+            return message.reply(SmartMessage.system(`Voice ${voice_name} not found.`));
         }
-        return message.reply(SmartMessage.system(`Voice ${voiceName} set default successfully.`));
+        return message.reply(SmartMessage.system(`Voice ${voice_name} set default successfully.`));
     }
 
     async setVoicePrivate(user_id: string, voiceName: string) {
@@ -182,22 +182,16 @@ export class VoiceBotService {
         return message.reply(SmartMessage.system(`Voice ${voiceName} set private successfully.`));
     }
 
-    async handleSetVoicePublic(user_id: string, message_content: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        let parts = message_content.trim().split(/\s+/);
-        let command = parts.shift();
-        let voiceName = parts.join(' ');
-        console.log(command, voiceName);
-        if (!command || !voiceName) {
-            return message.reply(SmartMessage.system(`Set voice public command syntax: *set_public <voice_name>`));
-        }
-        const result = await this.setVoicePublic(user_id, voiceName);
+    async handleSetVoicePublic(user_id: string, voice_name: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
+        const result = await this.setVoicePublic(user_id, voice_name);
         if (!result) {
-            return message.reply(SmartMessage.system(`Voice ${voiceName} not found.`));
+            return message.reply(SmartMessage.system(`Voice ${voice_name} not found.`));
         }
-        return message.reply(SmartMessage.system(`Voice ${voiceName} set public successfully.`));
+        return message.reply(SmartMessage.system(`Voice ${voice_name} set public successfully.`));
     }
-    async setVoicePublic(user_id: string, voiceName: string) {
-        const userVoice = await this.userVoiceRepository.findOne({ where: { voiceName: voiceName, mezonUserId: user_id } });
+
+    async setVoicePublic(user_id: string, voice_name: string) {
+        const userVoice = await this.userVoiceRepository.findOne({ where: { voiceName: voice_name, mezonUserId: user_id } });
         if (!userVoice) {
             return null;
         }
@@ -207,24 +201,25 @@ export class VoiceBotService {
     }
 
     async handlePlayAudio(user_id: string, message_content: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
+        message.reply(SmartMessage.system(`Đang xử lý thành file âm thanh, vui lòng chờ...`));
         let parts = message_content.trim().split(/\s+/);
         let command = parts.shift();
         let text = parts.join(' ');
+        console.log(command, text);
         if (!command || !text) {
-            return message.reply(SmartMessage.system(`Play audio command syntax: *play_audio <text>`));
+            return message.reply(SmartMessage.system(`Play audio command syntax: *play_audio <Đoạn văn bản>`));
         }
         let voiceName = "";
+        let filePath = "";
         const userDefaultVoice = await this.userVoiceRepository.findOne({ where: { mezonUserId: user_id, isDefault: true } });
         if (!userDefaultVoice) {
             let publicVoices = await this.userVoiceRepository.find({ where: { mezonUserId: user_id, isPrivate: ACCESS_LEVEL.PUBLIC } });
-            if (publicVoices.length > 0) {
-                const randomIndex = Math.floor(Math.random() * publicVoices.length);
-                voiceName = publicVoices[randomIndex].voiceName;
-            } else {
-                voiceName = "";
-            }
+            const randomIndex = Math.floor(Math.random() * publicVoices.length);
+            voiceName = publicVoices[randomIndex].voiceName;
+            filePath = "";
         } else {
             voiceName = userDefaultVoice.voiceName;
+            filePath = userDefaultVoice.voicePath;
         }
         const callResponse = await this.callTool.callTool({
             name: 'tts_gemini_single',
@@ -232,7 +227,7 @@ export class VoiceBotService {
                 request: {
                     text,
                     voice: voiceName,
-                    file_path: userDefaultVoice?.voicePath ? userDefaultVoice.voicePath : "",
+                    file_path: filePath,
                 }
             }
         });
@@ -248,7 +243,7 @@ export class VoiceBotService {
         return message.reply(SmartMessage.voice(audioPath));
 
     }
-    
+
     async handleGetAudioList() {
         const callResponse = await this.callTool.callTool({
             name: 'get_audio_list',
@@ -268,22 +263,16 @@ export class VoiceBotService {
         return callResponse.result?.content;
     }
 
-    async handleDeleteVoice(user_id: string, message_content: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        let parts = message_content.trim().split(/\s+/);
-        let command = parts.shift();
-        let voiceName = parts.join(' ');
-        if (!command || !voiceName) {
-            return message.reply(SmartMessage.system(`Delete voice command syntax: *delete_voice <voice_name>`));
-        }
-        const result = await this.deleteVoice(voiceName, user_id);
+    async handleDeleteVoice(user_id: string, voice_name: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
+        const result = await this.deleteVoice(voice_name, user_id);
         if (!result) {
-            return message.reply(SmartMessage.system(`Voice ${voiceName} not found.`));
+            return message.reply(SmartMessage.system(`Voice ${voice_name} not found.`));
         }
-        return message.reply(SmartMessage.system(`Voice ${voiceName} deleted successfully.`));
+        return message.reply(SmartMessage.system(`Voice ${voice_name} deleted successfully.`));
     }
 
     async handleSendHelpMessage(@Message() m: Nezon.Message) {
-        const helpMessagePath = path.join(process.cwd(), 'src', 'bot', 'bot_help_message.txt');
+        const helpMessagePath = path.join(process.cwd(), 'src', 'bot', 'bot_help_message_v1.txt');
         const helpText = fs.readFileSync(helpMessagePath, 'utf-8');
 
         const exampleMarkers: { s: number; e: number; type: EMarkdownType }[] = [];
@@ -345,5 +334,56 @@ export class VoiceBotService {
             t: helpText,
             mk: exampleMarkers,
         })
+    }
+
+    private normalizeVoiceName(voiceName: string, sourceVoice?: UserVoice) {
+        let normalized = voiceName;
+        if (sourceVoice) {
+            const suffix = `_${sourceVoice.id}`;
+            if (normalized.endsWith(suffix)) {
+                normalized = normalized.slice(0, -suffix.length);
+            }
+        }
+        const trimmedNumericSuffix = normalized.replace(/(_\d+)+$/, '');
+        return trimmedNumericSuffix.length > 0 ? trimmedNumericSuffix : normalized;
+    }
+
+    async handleUseVoice(user: Nezon.User, voice_name: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
+        const userVoice = await this.userVoiceRepository.findOne({ where: { voiceName: voice_name, isPrivate: ACCESS_LEVEL.PUBLIC } });
+        if (!userVoice) {
+            return message.reply(SmartMessage.system(`Voice ${voice_name} not found.`));
+        }
+        const normalizedVoiceName = this.normalizeVoiceName(voice_name, userVoice);
+        const currentDefaultVoice = await this.userVoiceRepository.findOne({ where: { isDefault: true, mezonUserId: user.id } });
+        const existingUserVoice = await this.userVoiceRepository.findOne({
+            where: { mezonUserId: user.id, voiceName: Like(`${normalizedVoiceName}_%`) },
+        });
+        if (currentDefaultVoice) {
+            if (!existingUserVoice || currentDefaultVoice.id !== existingUserVoice.id) {
+                currentDefaultVoice.isDefault = false;
+                await this.userVoiceRepository.save(currentDefaultVoice);
+            }
+        }
+        if (existingUserVoice) {
+            existingUserVoice.isDefault = true;
+            await this.userVoiceRepository.save(existingUserVoice);
+            return message.reply(SmartMessage.system(`Chuyển sang sử dụng giọng ${existingUserVoice.voiceName} thành công.`));
+        }
+        let cloneVoice: RegisterVoiceDto = {
+            mezonUserId: user.id,
+            mezonUserName: user.username,
+            voicePath: userVoice.voicePath,
+            voiceName: normalizedVoiceName,
+            isPrivate: ACCESS_LEVEL.PUBLIC,
+            textRef: userVoice.textRef,
+            isDefault: true,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+        };
+        let savedVoice = await this.userVoiceRepository.save(cloneVoice);
+        savedVoice.voiceName = `${normalizedVoiceName}_${savedVoice.id}`;
+        await this.userVoiceRepository.save(savedVoice);
+        await this.userVoiceRepository.increment({ id: userVoice.id }, 'numberUsage', 1);
+        return message.reply(SmartMessage.system(`Chuyển sang sử dụng giọng ${voice_name} thành công.`));
     }
 }
