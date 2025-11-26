@@ -1,4 +1,4 @@
-import { Arg, Attachments, AutoContext, Command, Message, MessageContent, Nezon, SmartMessage, User } from "@n0xgg04/nezon";
+import { Arg, Attachments, AutoContext, Channel, Clan, Command, Message, MessageContent, Nezon, SmartMessage, User } from "@n0xgg04/nezon";
 import { Injectable } from "@nestjs/common";
 import { VoiceBotService } from "./voice_bot.service";
 
@@ -24,6 +24,7 @@ export class VoiceBotHandler {
     async onListVoices(
         @User('id') user_id: string,
         @AutoContext('message') message: Nezon.AutoContextType.Message) {
+            console.log(message);
         return this.voiceBotService.handleListVoices(user_id, message);
     }
 
@@ -55,8 +56,10 @@ export class VoiceBotHandler {
     async onPlayAudio(
         @User('id') user_id: string,
         @MessageContent() message_content: string,
+        @Channel('id') channel_id: string,
+        @Clan() clan: Nezon.Clan,
         @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        return this.voiceBotService.handlePlayAudio(user_id, message_content, message);
+        return this.voiceBotService.handleRequestAudioWithRunpod(user_id, message_content, channel_id, clan.id, message);
     }
 
     @Command({ name: 'delete_voice' })

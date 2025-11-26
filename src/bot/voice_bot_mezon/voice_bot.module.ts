@@ -7,10 +7,12 @@ import { MCPConnection } from '../mcp/mcp.connection';
 import { MCPApiService } from '../mcp/mcp.api';
 import { CallTool } from '../mcp/tools/callTools';
 import { ListTools } from '../mcp/tools/listTools';
+import { VoiceBotController } from './voice_bot.controller';
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserVoice]),
   ],
+  controllers: [VoiceBotController],
   providers: [VoiceBotService, VoiceBotHandler, MCPConnection, MCPApiService, ListTools, CallTool],
   exports: [VoiceBotService],
 })

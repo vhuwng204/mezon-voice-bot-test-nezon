@@ -2,21 +2,34 @@ import { Repository, Like } from "typeorm";
 import { Injectable } from "@nestjs/common";
 import { AutoContext, Message, Nezon, SmartMessage } from "@n0xgg04/nezon";
 import { ACCESS_LEVEL } from "./bot";
-import { RegisterVoiceDto } from "./voice_bot.dto";
+import { RegisterVoiceDto, WebhookDto } from "./voice_bot.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CallTool } from "../mcp/tools/callTools";
 import { UserVoice } from "./user_voice.entity";
 import { EMarkdownType } from "mezon-sdk";
 import * as fs from "fs";
 import * as path from "path";
+import axios from "axios";
+import { MezonClient } from "mezon-sdk";
 @Injectable()
 export class VoiceBotService {
     constructor(
         @InjectRepository(UserVoice)
         private readonly userVoiceRepository: Repository<UserVoice>,
         private readonly callTool: CallTool,
+        private readonly mezonClient: MezonClient,
     ) {
     }
+
+    private readonly runpodServerUrl: string = process.env.RUNPOD_ENPOINT ?? '';
+    private readonly apiKey: string = process.env.API_KEY ?? '';
+    private readonly minioEndpoint: string = process.env.MINION_ENDPOINT ?? '';
+    private readonly minioAccessToken: string = process.env.MINIO_ACCESS_KEY ?? '';
+    private readonly minioSecretKey: string = process.env.MINIO_SECRET_KEY ?? '';
+    private readonly minioBucket: string = process.env.MINIO_BUCKET ?? '';
+    private readonly minioFolder: string = process.env.MINIO_FOLDER ?? '';
+    private readonly cdnUrl: string = process.env.CDN_URL ?? '';
+    private readonly webhookUrl: string = process.env.WEBHOOK_URL ?? '';
 
     private async deleteVoice(voiceName: string, user_id: string): Promise<boolean> {
         const response = await this.userVoiceRepository.delete({
@@ -200,26 +213,27 @@ export class VoiceBotService {
         return true;
     }
 
-    async handlePlayAudio(user_id: string, message_content: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
+    async handleRequestAudio(user_id: string, message_content: string, channel_id: string, clan_id: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
         message.reply(SmartMessage.system(`Đang xử lý thành file âm thanh, vui lòng chờ...`));
         let parts = message_content.trim().split(/\s+/);
         let command = parts.shift();
         let text = parts.join(' ');
+        let message_id = message.id;
         console.log(command, text);
         if (!command || !text) {
             return message.reply(SmartMessage.system(`Play audio command syntax: *play_audio <Đoạn văn bản>`));
         }
         let voiceName = "";
-        let filePath = "";
+        let voicePath = "";
         const userDefaultVoice = await this.userVoiceRepository.findOne({ where: { mezonUserId: user_id, isDefault: true } });
         if (!userDefaultVoice) {
             let publicVoices = await this.userVoiceRepository.find({ where: { mezonUserId: user_id, isPrivate: ACCESS_LEVEL.PUBLIC } });
             const randomIndex = Math.floor(Math.random() * publicVoices.length);
             voiceName = publicVoices[randomIndex].voiceName;
-            filePath = "";
+            voicePath = publicVoices[randomIndex].voicePath;
         } else {
             voiceName = userDefaultVoice.voiceName;
-            filePath = userDefaultVoice.voicePath;
+            voicePath = userDefaultVoice.voicePath;
         }
         const callResponse = await this.callTool.callTool({
             name: 'tts_gemini_single',
@@ -227,7 +241,10 @@ export class VoiceBotService {
                 request: {
                     text,
                     voice: voiceName,
-                    file_path: filePath,
+                    file_path: voicePath,
+                    channel_id: channel_id,
+                    clan_id: clan_id,
+                    message_id: message_id,
                 }
             }
         });
@@ -242,6 +259,98 @@ export class VoiceBotService {
         }
         return message.reply(SmartMessage.voice(audioPath));
 
+    }
+
+    async handleRequestAudioWithRunpod(user_id: string, message_content: string, channel_id: string, clan_id: string, @AutoContext('message') message: Nezon.AutoContextType.Message) {
+        const replyMessage = await message.reply(SmartMessage.system(`Audio đang được tạo ra, vui lòng chờ...`));
+        console.log(replyMessage);
+        let parts = message_content.trim().split(/\s+/);
+        let command = parts.shift();
+        let text = parts.join(' ');
+        console.log(command, text);
+        if (!command || !text) {
+            return message.reply(SmartMessage.system(`Play audio command syntax: *play_audio <Đoạn văn bản>`));
+        }
+        let voicePath = "";
+        let refText = "";
+        const userDefaultVoice = await this.userVoiceRepository.findOne({ where: { mezonUserId: user_id, isDefault: true } });
+        if (!userDefaultVoice) {
+            const publicVoices = await this.userVoiceRepository.find({ where: { mezonUserId: user_id, isPrivate: ACCESS_LEVEL.PUBLIC } });
+            const randomIndex = Math.floor(Math.random() * publicVoices.length);
+            const selectedVoice = publicVoices[randomIndex];
+            voicePath = selectedVoice.voicePath;
+            refText = selectedVoice.textRef;
+        } else {
+            voicePath = userDefaultVoice.voicePath;
+            refText = userDefaultVoice.textRef;
+        }
+
+        const response = await axios.post(`${this.runpodServerUrl}`, {
+            input: {
+                gen_text: text,
+                ref_audio_path: voicePath,
+                ref_text: refText,
+                channel_id: channel_id,
+                clan_id: clan_id,
+                message_id: replyMessage.message_id,
+                model: "F5TTS_Base",
+                ckpt_file: "./models/F5-TTS/model_last.pt",
+                vocab_file: "./models/F5-TTS/vocab.txt",
+                vocoder_name: "vocos",
+                load_vocoder_from_local: true,
+                vocoder_local_path: "./checkpoints/vocos-mel-24khz",
+                speed: 1.0,
+                cfg_strength: 2.0,
+                nfe_step: 32,
+                target_rms: 0.1,
+                cross_fade_duration: 0.15,
+                remove_silence: false,
+                return_audio_base64: false,
+                minio_endpoint: this.minioEndpoint,
+                minio_access_key: this.minioAccessToken,
+                minio_secret_key: this.minioSecretKey,
+                minio_bucket: this.minioBucket,
+                minio_folder: this.minioFolder,
+                cdn_url: this.cdnUrl,
+                cleanup_after_upload: true,
+            },
+            webhook: `${this.webhookUrl}`
+        },
+            {
+                headers: {
+                    Authorization: `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json',
+                }
+            });
+
+    }
+
+    async handleSendAudioToChannel(webhookDto: WebhookDto) {
+        const clan = this.mezonClient.clans.get(webhookDto.clanId);
+        let channel = await clan.channels.fetch(webhookDto.channelId);
+        const message = await channel.messages.fetch(webhookDto.messageId);
+
+        if (!clan) {
+            console.warn(`Clan not found for id=${webhookDto.clanId}`);
+            return null;
+        }
+
+        if (!channel) {
+            console.warn(`Channel not found for id=${webhookDto.channelId} in clan=${webhookDto.clanId}`);
+            return null;
+        }
+
+        if (!message) {
+            console.warn(`Message not found for id=${webhookDto.messageId} in channel=${webhookDto.channelId}`);
+            return null;
+        }
+
+        console.log('Found message to send audio to:', message.content?.t);
+        await message.update(
+            {t: ""},
+            [],
+            [{url: webhookDto.audioPath}]
+        )   
     }
 
     async handleGetAudioList() {

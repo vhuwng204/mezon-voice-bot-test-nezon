@@ -18,3 +18,10 @@ export class MCPResponseDto {
     result: CallToolResponse['result'] | null;
     error: unknown | null;
 }
+
+export class WebhookDto {
+    channelId: string;
+    clanId: string;
+    messageId: string;
+    audioPath: string;
+}
