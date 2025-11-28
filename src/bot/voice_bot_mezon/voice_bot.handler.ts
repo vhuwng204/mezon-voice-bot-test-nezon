@@ -6,7 +6,7 @@ import { VoiceBotService } from "./voice_bot.service";
 export class VoiceBotHandler {
     constructor(private readonly voiceBotService: VoiceBotService) { }
 
-    @Command({ name: 'register_voice' })
+    @Command({ name: 'register' })
     async onRegisterVoice(
         @User() user: Nezon.User,
         @MessageContent() message_content: string,
@@ -20,12 +20,10 @@ export class VoiceBotHandler {
         }
     }
 
-    @Command({ name: 'list_voice' })
-    async onListVoices(
-        @User('id') user_id: string,
+    @Command({ name: 'list' })
+    async onGetPublicVoices(
         @AutoContext('message') message: Nezon.AutoContextType.Message) {
-            console.log(message);
-        return this.voiceBotService.handleListVoices(user_id, message);
+        return this.voiceBotService.handleGetPublicVoices(message);
     }
 
     @Command({ name: 'set_default' })
@@ -52,7 +50,7 @@ export class VoiceBotHandler {
         return this.voiceBotService.handleSetVoicePublic(user_id, voice_name, message);
     }
 
-    @Command({ name: 'play_audio' })
+    @Command({ name: 'play' })
     async onPlayAudio(
         @User('id') user_id: string,
         @MessageContent() message_content: string,
@@ -62,7 +60,7 @@ export class VoiceBotHandler {
         return this.voiceBotService.handleRequestAudioWithRunpod(user_id, message_content, channel_id, clan.id, message);
     }
 
-    @Command({ name: 'delete_voice' })
+    @Command({ name: 'delete' })
     async onDeleteVoice(
         @User('id') user_id: string,
         @Arg(0) voice_name: string,
@@ -85,8 +83,8 @@ export class VoiceBotHandler {
     @Command({name: 'use'})
     async onUseVoice(
         @User() user: Nezon.User,
-        @Arg(0) voice_name: string,
+        @Arg(0) query: string,
         @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        return this.voiceBotService.handleUseVoice(user, voice_name, message);
+        return this.voiceBotService.handleUseVoice(user, query, message);
     }
 }

@@ -1,28 +1,24 @@
 Mezon_Voice_Bot có các lệnh sau:
 1. Xem các giọng đã được đăng ký
-- Cách thực hiện: gõ lệnh như sau: *list_voice
-- Danh sách sẽ hiện ra dưới dạng sau:
-    - Các giọng của bạn:
-        - Giọng default của bạn: [public|private] <id> <tên giọng bạn đã đăng ký> [default] (number usages nếu như giọng là public)
-        - Danh sách giọng private của bạn [private] <id> <tên giọng bạn đã đăng ký> 
-        - Danh sách giọng public của bạn [public] <id> <tên giọng bạn đã đăng ký> (number usages)
-    - Top 5 giọng thịnh hành hiện nay:
-        - Danh sách giọng public có lượt sử dụng cao nhất [public] <id> <tên giọng đã được đăng ký> <tên chủ sở hữu> (number usages)
-- ví dụ: *list_voice
-Các giọng của bạn:
-[private] 15 KienThucQuanSu [default] 
-[public] 16 kenhCoVan 
-[public] 17 Hehehe 
-Các giọng đang hot hiện nay:
-[public] 16 kenhCoVan [by me] (1 usages)
-[public] 17 HocEnglishOnline [by hung.nguyenduc] (1 usages)
+- Cách thực hiện: gõ lệnh như sau: *list
+- Kết quả hiển thị chỉ bao gồm danh sách giọng public ở dạng:
+top available voice:
+<id> <tên giọng> (<số lần sử dụng> uses)
+- ví dụ: *list
+top available voice:
+48 Nam_Mien_Nam_1 (3 uses)
+61 Nu_Mien_Nam_1 (3 uses)
+55 Nu_Mien_Bac_2 (2 uses)
 2. Sử dụng giọng của người dùng khác
 - Cách thực hiện: gõ lệnh như sau: *use <tên giọng>
 - yêu cầu: chỉ sử dụng được những giọng có kiểu là public
-- ví dụ: muốn sử dụng giọng là Hehehe
-*use Hehehe
+- ví dụ: muốn sử dụng giọng là Hehehe có id là 50
+    - *use Hehehe
+    - *use 50 
 3. Sử dụng chuyển văn bản thành âm thanh
-- Cách thực hiện: *play_audio <đoạn văn bản>
-- Note: Nếu như bạn chưa đăng ký bản ghi giọng nào thì hệ thống sẽ lấy random 1 giọng để phát
+- Cách thực hiện: *play <đoạn văn bản>
+- Note: Nếu như bạn chưa chọn sử dụng bản ghi giọng nào thì hệ thống sẽ lấy random 1 giọng để phát
 - ví dụ: muốn chuyển "Tôi rất đẹp trai" sang bản audio 
-*play_audio Tôi rất đẹp trai
+    - *play_audio Tôi rất đẹp trai
+4. Xem hướng dẫn sử dụng của con bot
+- Cách thực hiện: *help hoặc @Mezon_Voice_Bot

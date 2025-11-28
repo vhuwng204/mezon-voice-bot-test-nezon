@@ -24,4 +24,23 @@ export class WebhookDto {
     clanId: string;
     messageId: string;
     audioPath: string;
+    fileSize: number;
+    fileType: string;
+}
+export class RunPodWebhookResponseDto {
+    output: {
+        output: {
+            audio_deleted?: boolean;
+            audio_path?: string | null;
+            cdn_url?: string;
+            channel_id: string;
+            message_id: string;
+            clan_id: string;
+            file_size: number;
+            [key: string]: any;
+        };
+        status: string;
+    };
+    status: string;
+    webhook?: string;
 }

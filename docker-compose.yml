@@ -1,0 +1,63 @@
+services:
+  voice-bot:
+    image: vhuwng3010/hn3-voice-bot-v1:1.0.0
+    container_name: mezon-voice-bot
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      NODE_ENV: production
+      PORT: ${PORT:-3000}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-mezon}
+      DB_PASSWORD: ${DB_PASSWORD:-mezon}
+      DB_NAME: ${DB_NAME:-mezon_voice}
+      ENABLE_SYNCHRONIZE: ${ENABLE_SYNCHRONIZE:-false}
+      MEZON_TOKEN: ${MEZON_TOKEN:-}
+      MEZON_BOT_ID: ${MEZON_BOT_ID:-}
+      MCP_SERVER_URL: ${MCP_SERVER_URL:-http://mcp-tts-server:8000}
+      RUNPOD_ENPOINT: ${RUNPOD_ENPOINT:-}
+      API_KEY: ${API_KEY:-}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-}
+      MINIO_BUCKET: ${MINIO_BUCKET:-}
+      MINIO_FOLDER: ${MINIO_FOLDER:-}
+      CDN_URL: ${CDN_URL:-}
+      WEBHOOK_URL: ${WEBHOOK_URL:-}
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - mezon-cache:/usr/src/app/mezon-cache
+    networks:
+      - mezon-net
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: mezon-postgres
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-mezon} -d ${DB_NAME:-mezon_voice}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      - POSTGRES_DB=${DB_NAME:-mezon_voice}
+      - POSTGRES_USER=${DB_USERNAME:-mezon}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-mezon}
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - mezon-net
+
+volumes:
+  postgres-data:
+  mezon-cache:
+
+networks:
+  mezon-net:
+    driver: bridge
+
