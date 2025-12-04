@@ -25,15 +25,6 @@ export class VoiceBotHandler {
         @AutoContext('message') message: Nezon.AutoContextType.Message) {
         return this.voiceBotService.handleGetPublicVoices(message);
     }
-
-    @Command({ name: 'set_default' })
-    async onSetDefaultVoice(
-        @User('id') user_id: string,
-        @Arg(0) voice_name: string,
-        @AutoContext('message') message: Nezon.AutoContextType.Message) {
-        return this.voiceBotService.handleSetDefaultVoice(user_id, voice_name, message);
-    }
-
     @Command({ name: 'set_private' })
     async onSetPrivateVoice(
         @User('id') user_id: string,
@@ -87,4 +78,5 @@ export class VoiceBotHandler {
         @AutoContext('message') message: Nezon.AutoContextType.Message) {
         return this.voiceBotService.handleUseVoice(user, query, message);
     }
+
 }

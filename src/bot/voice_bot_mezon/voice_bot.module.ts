@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { UserVoice } from './user_voice.entity';
+import { UserVoice } from './entity/user_voice.entity';
+import { Voice } from './entity/voice.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VoiceBotService } from './voice_bot.service';
 import { VoiceBotHandler } from './voice_bot.handler';
@@ -10,7 +11,7 @@ import { ListTools } from '../mcp/tools/listTools';
 import { VoiceBotController } from './voice_bot.controller';
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserVoice]),
+    TypeOrmModule.forFeature([UserVoice, Voice]),
   ],
   controllers: [VoiceBotController],
   providers: [VoiceBotService, VoiceBotHandler, MCPConnection, MCPApiService, ListTools, CallTool],

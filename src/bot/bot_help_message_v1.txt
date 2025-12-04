@@ -19,6 +19,6 @@ top available voice:
 - Cách thực hiện: *play <đoạn văn bản>
 - Note: Nếu như bạn chưa chọn sử dụng bản ghi giọng nào thì hệ thống sẽ lấy random 1 giọng để phát
 - ví dụ: muốn chuyển "Tôi rất đẹp trai" sang bản audio 
-    - *play_audio Tôi rất đẹp trai
+    - *play Tôi rất đẹp trai
 4. Xem hướng dẫn sử dụng của con bot
 - Cách thực hiện: *help hoặc @Mezon_Voice_Bot

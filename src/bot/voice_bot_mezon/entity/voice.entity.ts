@@ -1,25 +1,17 @@
 import { Entity, PrimaryGeneratedColumn, Column, BeforeInsert, BeforeUpdate, Index } from 'typeorm';
-import { ACCESS_LEVEL } from './bot';
+import { ACCESS_LEVEL } from '../bot';
 
 
 @Index([
-    'mezonUserId',
     'voiceName',
     'numberUsage',
-    'isDefault',
     'voicePath',
-    'isPrivate',
+    'voiceType',
 ])
-@Entity("user_voices")
-export class UserVoice {
+@Entity("voices")
+export class Voice {
     @PrimaryGeneratedColumn()
     id: number
-
-    @Column({ type: "text", name: "mezon_user_id", nullable: true })
-    mezonUserId: string
-
-    @Column({ type: "text", name: "mezon_user_name", nullable: true })
-    mezonUserName: string
 
     @Column({ type: "text", name: "voice_path", nullable: true })
     voicePath: string
@@ -30,11 +22,8 @@ export class UserVoice {
     @Column({ type: "text", name: "voice_name", nullable: true })
     voiceName: string
 
-    @Column({ type: "boolean", default: false, name: "is_default" })
-    isDefault: boolean
-
-    @Column({ type: "enum", enum: ACCESS_LEVEL, default: ACCESS_LEVEL.PRIVATE, name: "is_private" })
-    isPrivate: ACCESS_LEVEL
+    @Column({ type: "enum", enum: ACCESS_LEVEL, default: ACCESS_LEVEL.PRIVATE, name: "voice_type" })
+    voiceType: ACCESS_LEVEL
 
     @Column({ type: "bigint", name: "number_usage", default: 1, nullable: true })
     numberUsage: number

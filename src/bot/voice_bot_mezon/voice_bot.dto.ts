@@ -1,18 +1,23 @@
 import { CallToolResponse } from "../mcp/tools/callTools";
 import { ACCESS_LEVEL } from "./bot";
+import { Voice } from "./entity/voice.entity";
 
-export class RegisterVoiceDto {
-    mezonUserId: string;
-    mezonUserName: string;
+export class CreateVoiceDto {
     voicePath: string;
     voiceName: string;
-    isPrivate: ACCESS_LEVEL;
+    voiceType: ACCESS_LEVEL;
     textRef?: string;    
-    isDefault?: boolean;
     createdAt: number;
     updatedAt: number;
 }
 
+export class CreateUserVoiceDto {
+    voiceId: Voice;
+    mezonUserId: string;
+    mezonUserName: string;
+    createdAt: number;
+    updatedAt: number;
+}
 
 export class MCPResponseDto {
     result: CallToolResponse['result'] | null;
